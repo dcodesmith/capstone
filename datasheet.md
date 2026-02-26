@@ -180,7 +180,7 @@ The dataset is available in the public GitHub repository:
 
 - **Per-function β tuning:** adjusting exploration/exploitation per function improved results over a fixed global β.
 - **Multi-strategy comparison:** running GP-UCB, LR corners, and GP Gradient Ascent in parallel revealed function-specific patterns.
-- **Manual hypothesis testing:** the [1,1,1,1] corner probe for F5 discovered the true optimum when GP-UCB was searching the wrong region.
+- **Manual hypothesis testing:** corner probe for F5 discovered the true optimum when GP-UCB was searching the wrong region.
 
 ### What could be improved
 
