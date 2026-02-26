@@ -51,7 +51,7 @@ For each benchmark function F1–F8, the dataset includes a chronological histor
 | F2 | 2D | [0, 1]² | Unknown (stuck at initial) |
 | F3 | 3D | [0, 1]³ | Interior optimum |
 | F4 | 4D | [0, 1]⁴ | Interior optimum, narrow region |
-| F5 | 4D | [0, 1]⁴ | Corner optimum at [1,1,1,1] |
+| F5 | 4D | [0, 1]⁴ | Corner optimum |
 | F6 | 5D | [0, 1]⁵ | Mixed (some dims high, some low) |
 | F7 | 6D | [0, 1]⁶ | Interior optimum |
 | F8 | 8D | [0, 1]⁸ | Mixed (d5 high, d1-d4 low) |
