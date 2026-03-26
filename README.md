@@ -8,79 +8,101 @@ In real-world ML, this is similar to tuning an expensive experiment or system. I
 
 This maps directly onto things like **hyperparameter tuning, experiment design, and business A/B testing**, where each evaluation costs time or money and you must balance exploration with exploitation.
 
+# Bayesian Black-Box Optimisation Capstone Project
 
-## 2. Inputs and outputs
 
-Each hidden function $f_i$ acts as a black box:
+## NON-TECHNICAL EXPLANATION OF YOUR PROJECT
 
-- **Input:** a vector $x \in [0,1]^d$, where d depends on the function (from 2D up to 8D).  
-  - In code, this is a NumPy array of shape `(d,)`.  
-  - In the portal, it is submitted as a hyphen-separated string, e.g.  
-    `0.224000-0.847000-0.879000-0.879000`.
-- **Output:** a single real number $y = f_i(x)$, representing performance (e.g. yield, reward, or negative loss).
+This project tackled the challenge of finding optimal settings for eight unknown systems — imagine trying to find the perfect recipe without knowing what ingredients do, only tasting the final result. Each week, I could test one combination of settings per system and observe the outcome.
 
-I start with **initial design points** provided as `.npy` files (inputs and outputs per function). Each week, I submit **one new query per function** and receive eight new scalar outputs, which I then append to the existing data and use to update my models.
+My approach evolved from broad experimentation early on to targeted refinement later. The key breakthrough was recognising which settings were already optimised versus which still needed adjustment — similar to knowing your oven temperature is correct but your seasoning needs work.
 
-## 3. Challenge objectives
+Over 13 weeks, all eight systems improved from their starting points. The most successful strategy combined data-driven pattern recognition with disciplined focus on uncertain variables.
 
-The objective is to **maximise** each function $f_i(x)$ separately:
 
-- For some functions, larger y is directly better (e.g. yield, probability of success).
-- For others, the description frames it as minimising harm or side-effects, but the supplied outputs are already aligned so that “higher is better” for the optimisation task.
+## DATA
 
-Key constraints:
+The project used eight black-box functions (F1-F8) with varying dimensionality (2D to 8D), provided through the Imperial College Business School BBO Capstone Project portal. Each function accepts input vectors with values between 0 and 1, returning a scalar output to maximise.
 
-- I can **only** access the true functions through queries (no gradients, closed forms or derivatives).
-- I get just **one new evaluation per function per week**, so the data set grows slowly.
-- There may be **noise** in the outputs, and I do not know the exact function form (some are multimodal; Function 5 is described as unimodal).
+Data accumulated over 13 weeks:
+- Initial dataset: 10 pre-sampled points per function
+- Weekly queries: 1 new query per function per week
+- Final dataset: 23 observations per function (10 initial + 13 weekly)
 
-The challenge is to design a strategy that **uses each new data point well**, while clearly documenting how and why the strategy evolves over time.
+All data was provided through the course platform with no external sources required.
 
-## 4. Technical approach
 
-I model each function with a **Gaussian Process (GP) regression surrogate** and use **acquisition functions** to choose the next query.
+## MODEL
 
-### Rounds 1–3 strategy
+I employed multiple surrogate models, selected per-function based on observed behaviour:
 
-- **Round 1**
-  - Fit a GP with an RBF + White kernel to the initial data.
-  - For each function, sample 10,000–20,000 candidate points uniformly in $[0,1]^d$.
-  - Use **UCB (Upper Confidence Bound)** with a shared `beta = 1.5` and pick the candidate with the highest `mean + beta β * std`.
+**Gaussian Process with UCB Acquisition (GP-UCB)**: The primary model for early exploration. GP fits a probabilistic surrogate to observed data, and Upper Confidence Bound balances predicted value against uncertainty. The β parameter controls exploration-exploitation trade-off.
 
-- **Round 2**
-  - Append Round-1 queries and outputs to the initial data and refit the GPs.
-  - Introduce **per-function beta β** based on performance (higher beta β for weak / flat functions to explore more; lower beta β for strong ones to exploit).
-  - Add a simple **“no duplicate points”** rule so the optimiser never re-suggests a previously evaluated input.
+**GradientBoostingRegressor**: Used when GP-UCB stagnated. Tree-based models capture non-linear patterns without smoothness assumptions, proving effective for functions with sharp ridges or discontinuities.
 
-- **Round 3**
-  - Generalise the code to automatically load and append **all past rounds** from text files.
-  - Further refine **per-function beta β** using two rounds of history.
-  - For **Function 5**, which is described as **unimodal** and has a very strong known peak, I:
-    - Identify the best observed point so far.
-    - Generate **biased candidates**: ~70% sampled from a normal distribution around that best point (clipped to [0,1]), 30% uniform.
-    - Use a **small beta β (0.5)** so UCB focuses on local refinement near the peak while still keeping some global exploration.
+**Cluster Centre Method**: Computing the mean of top-K results for conservative refinement. Effective for functions with interior optima where staying within proven regions outperformed optimistic extrapolation.
 
-### Exploration vs exploitation
+**Variance-Guided Strategy (PCA-Inspired)**: The most impactful late-stage approach. By analysing per-dimension spread among top results, dimensions were classified as "solved" (low variance — lock at best value) or "uncertain" (high variance — continue exploring). This focused limited query budget on dimensions that actually influenced results.
 
-Exploration and exploitation are controlled mainly through:
+Model selection rationale: No single surrogate works universally. GP-UCB provides theoretical guarantees but assumes smoothness; GradientBoosting handles non-linearity but lacks uncertainty quantification; cluster centres are robust but conservative. Combining approaches based on function characteristics and competitive position yielded the best results.
 
-- The **beta β parameter** in UCB:
-  - High beta β (e.g. 2.0–2.5) on functions that are flat or far from the best (strong exploration).
-  - Low beta β (e.g. 0.5–1.0) on functions with strong incumbents to refine promising regions.
-- The **candidate distribution**:
-  - Uniform sampling for general exploration.
-  - Biased local sampling (currently only for Function 5) for targeted exploitation on a unimodal function.
 
-I have considered alternatives like **Expected Improvement (EI)** and **kernel SVMs or regressions** to classify high vs low regions, but so far the main engine remains a **GP surrogate + UCB**, with strategy adjustments driven by the observed data from each round.
+## HYPERPARAMETER OPTIMISATION
 
-Tech Stack: Python, Jupyter Notebooks, NumPy, Pandas, Scipy, Scikit-learn, Matplotlib.
+**GP-UCB β Parameter**:
+- Range tested: 1.5 to 3.0
+- Selection approach: Position-dependent. Conservative β (1.5-2.0) for functions showing improvement to exploit known regions; elevated β (2.5-3.0) for stagnant functions to encourage exploration.
+- Key learning: Aggressive exploration (β=2.5+) with limited remaining queries proved high-risk, causing significant regression in Week 12.
 
-## 5. Python environment
+**GradientBoosting Parameters**:
+- learning_rate: 0.05-0.1 (lower for noisy functions)
+- n_estimators: 100-150
+- max_depth: 2-3 (shallow to prevent overfitting on limited data)
+- Selection: Manual tuning based on function characteristics; deeper trees for complex functions, shallower for suspected smooth functions.
 
-Create a virtual environment, then from the **repository root**:
+**Variance-Guided Thresholds**:
+- Low variance threshold: 0.08 (dimensions below this spread considered "solved")
+- High variance threshold: 0.15 (dimensions above this spread actively explored)
+- Perturbation scale: 0.03 (conservative for final weeks)
+- Selection: Empirically determined through analysis of top-5 result spreads across functions.
 
-```bash
-pip install -r requirements.txt
-```
+**Cluster Analysis Parameters**:
+- top_k: 5 (number of best results to include in cluster centre calculation)
+- Corner detection threshold: 0.05 (dimensions within this distance of 0 or 1 considered at boundary)
+- Selection: top_k=5 balanced signal (enough points for reliable mean) against noise (excluding mediocre results).
 
-This installs NumPy, scikit-learn, TensorFlow (for hybrid / tuning notebooks), and Jupyter. Open notebooks under `notebooks/`; use each round’s folder as the working directory so `../initial_data` and local `inputs_*.txt` / `outputs_*.txt` resolve correctly.
+
+## RESULTS
+
+**Final Performance Summary**:
+
+| Function | Dimensions | Initial Value | Final Best | Improvement |
+|----------|------------|---------------|------------|-------------|
+| F1 | 2D | 9.14e-88 | 2.68e-09 | +79 orders of magnitude |
+| F2 | 2D | 0.337 | 0.697 | +107% |
+| F3 | 3D | -0.150 | -0.0046 | +97% |
+| F4 | 4D | -0.256 | 0.562 | +320% |
+| F5 | 4D | 179.7 | 8662.5 | +4,720% |
+| F6 | 5D | -1.288 | -0.183 | +86% |
+| F7 | 6D | 0.017 | 2.071 | +12,082% |
+| F8 | 8D | 9.943 | 9.968 | +0.25% |
+
+**Key Findings**:
+
+1. **Function structure matters**: F5 exhibited a corner optimum at [1,1,1,1]; F3 and F7 had tight interior optima; F8 showed partial structure with some dimensions tightly constrained and others varying widely.
+
+2. **Surrogate model selection is critical**: GradientBoosting broke F2's 10-week stagnation when GP-UCB couldn't. Different functions required different models.
+
+3. **Variance analysis reveals dimension importance**: The PCA-inspired approach of locking low-variance dimensions while exploring high-variance ones delivered three new bests in the final week.
+
+4. **Exploration timing matters**: Aggressive exploration early builds understanding; aggressive exploration late risks regression. Week 12's β=2.5 experiment for F7 caused significant regression.
+
+**Strategy Evolution**:
+- Weeks 1-5: Uniform GP-UCB (β=2.0) across all functions
+- Weeks 6-10: Function-specific model selection; cluster analysis to identify high-value regions
+- Weeks 11-13: Variance-guided refinement for improving functions; targeted exploration for stagnant functions
+
+**Lessons Learned**:
+- Simple methods (cluster centres) often outperform sophisticated ones with limited data
+- Position-dependent strategy (exploit when improving, explore when stagnant) optimises outcomes
+- Systematic model comparison beats intuition-driven selection

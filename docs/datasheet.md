@@ -10,7 +10,7 @@ This dataset was created to document and evaluate a **black-box optimisation (BB
 - **Comparative analysis** across functions with varying characteristics (smooth vs rugged landscapes, 2D to 8D dimensionality).
 - **Diagnostics and ablations** (e.g., effect of exploration parameter β, kernel choice, candidate sampling strategies).
 - **Peer review**: enabling others to inspect decisions, assumptions, and potential failure modes.
-- **Strategy evaluation**: comparing multiple query selection methods (GP-UCB, Linear Regression corners, GP Gradient Ascent).
+- **Strategy evaluation**: comparing multiple query selection methods (GP-UCB, GP gradient ascent on the acquisition surface, GradientBoosting and other sklearn surrogates, NN+GP hybrid, cluster-centre / top-*K* means, variance-guided dimension locking, manual probes, etc.).
 
 The dataset fills the practical need of turning "what I tried" into a transparent artefact: a structured record of optimisation decisions and outcomes that can inform future work.
 
@@ -20,7 +20,7 @@ The dataset fills the practical need of turning "what I tried" into a transparen
 
 ### What the dataset contains
 
-For each benchmark function F1–F8, the dataset includes a chronological history of evaluations across 10 weekly rounds:
+For each benchmark function F1–F8, the dataset includes a chronological history of evaluations across **13 weekly submission rounds** (after an initial seed batch), matching the capstone timeline described in the project README:
 
 - **Inputs (queries):** vectors `x ∈ ℝ^d`, bounded to `[0, 1]^d`.
 - **Outputs (evaluations):** scalar objective values `y = f(x)`.
@@ -32,10 +32,10 @@ For each benchmark function F1–F8, the dataset includes a chronological histor
 | Column | Type | Description |
 |--------|------|-------------|
 | `function_id` | string | Function identifier (F1–F8) |
-| `round` | int | Week/round of submission (1–10) |
+| `round` | int | Week/round of submission (1–13, after initial seed) |
 | `x_1 … x_d` | float | Input coordinates (d varies by function) |
 | `y` | float | Function evaluation result |
-| `method` | string | Query generation method (GP-UCB, LR-corner, GP-gradient, manual) |
+| `method` | string | Query generation method (e.g. GP-UCB, GP gradient ascent, GradientBoosting, NN+GP hybrid, cluster centre, K-means centroid, variance-guided / PCA-inspired locking, polynomial surrogate, manual probe) |
 | `beta` | float | Exploration parameter used (if applicable) |
 | `kernel` | string | GP kernel type (RBF or Matern) |
 | `candidate_count` | int | Number of candidates sampled |
@@ -48,7 +48,7 @@ For each benchmark function F1–F8, the dataset includes a chronological histor
 | Function | Dimensions | Domain | Landscape Characteristics |
 |----------|------------|--------|---------------------------|
 | F1 | 2D | [0, 1]² | Flat / deceptive |
-| F2 | 2D | [0, 1]² | Unknown (stuck at initial) |
+| F2 | 2D | [0, 1]² | Noisy, many local optima; strong gains with GradientBoosting after long GP-UCB plateau |
 | F3 | 3D | [0, 1]³ | Interior optimum |
 | F4 | 4D | [0, 1]⁴ | Interior optimum, narrow region |
 | F5 | 4D | [0, 1]⁴ | Corner optimum |
@@ -59,8 +59,8 @@ For each benchmark function F1–F8, the dataset includes a chronological histor
 ### Size and format
 
 - **Unit of observation:** one function evaluation.
-- **Total size:** 10 rounds × 8 functions = up to 80 evaluations (plus 10 initial seed points per function).
-- **Format:** CSV files (one per function) + summary CSV with all functions.
+- **Per function:** 10 initial seed points plus **13** weekly queries ≈ **23** stored evaluations per function over the competition (see README).
+- **Format in this repository:** NumPy `.npy` under `notebooks/initial_data/function_*/`; round history in newline-oriented **`inputs_*.txt` / `outputs_*.txt`** (and `inputs-m12.txt` / `outputs-m12.txt` for the first handoff) co-located with each Jupyter notebook under `notebooks/<round-folder>/`. A consolidated CSV export (e.g. `queries_all.csv`) is optional and not checked in by default.
 
 ### Gaps, missingness, and edge cases
 
@@ -83,37 +83,41 @@ Queries were generated algorithmically via a multi-strategy Bayesian optimisatio
    - Biased sampling near incumbent best for local intensification
 4. **Score candidates** using acquisition function (UCB: μ + β·σ).
 5. **Select and evaluate** the best candidate, append to history.
-6. **Repeat** for 10 rounds, updating the surrogate with all observed data.
+6. **Repeat** for each weekly round (13 post-seed rounds in this capstone), updating models and archives.
 
 ### Multi-strategy approach
 
-Three complementary methods were used depending on function characteristics:
+Methods were mixed over the 13 weeks depending on function behaviour (see README “Model” and notebook narratives). Examples include:
 
-| Method | Description | Used When |
+| Method | Description | Used when |
 |--------|-------------|-----------|
-| **GP-UCB with biased sampling** | Random candidates scored by UCB acquisition | Default for all functions |
-| **Linear Regression corners** | Push dimensions to extremes based on coefficient signs | Stuck functions, suspected boundary optima |
-| **GP Gradient Ascent** | Follow gradient of UCB acquisition function | Confirmed interior optima |
+| **GP-UCB (biased / uniform candidates)** | Surrogate GP + UCB scoring over candidate pools | Default exploration and mid-course refinement |
+| **GP gradient ascent** | Optimise acquisition surface along gradients | Interior optima where random candidates underperform |
+| **GradientBoosting surrogate** | Tree ensemble on observed data; dense candidate scoring | Rugged / noisy landscapes (e.g. F2 plateau breakout) |
+| **NN + GP hybrid** | MLP proposal filtered or combined with GP signal | High-D experiments (course modules); conservative clipping in places |
+| **Cluster centre / top-*K* mean** | Query centroid of best observed points | Stay inside empirically strong regions |
+| **Variance-guided (PCA-inspired)** | Lock low-spread dimensions; explore high-spread ones | Late budget, structured 5D/8D cases |
+| **Manual / corner probes** | Hand-chosen queries from domain reasoning | Boundary or interpretable structure (e.g. F1, F5) |
 
 ### Strategy evolution across rounds
 
-| Phase | Rounds | Focus | Rationale |
-|-------|--------|-------|-----------|
-| Exploration | 1–4 | High β, broad coverage | Build initial GP models with diverse observations |
-| Analysis | 5–9 | Compare methods, per-function tuning | Identify which strategy suits each function |
-| Exploitation | 10 | Low β, GP Gradient Ascent | Refine best known regions |
+| Phase | Rounds (approx.) | Focus | Rationale |
+|-------|------------------|-------|-----------|
+| Early | 1–5 | Shared or uniform GP-UCB, high β in places | Broad coverage and baselines |
+| Mid | 6–10 | Per-function models, kernels, bias, cluster ideas | Respond to plateaus and landscape shape |
+| Late | 11–13 | Variance-guided refinement, targeted exploration | Concentrate budget on uncertain dimensions; avoid late blind exploration |
 
 ### Key hyperparameters tuned
 
-- **β (exploration):** ranged from 0.5 (exploit) to 2.5 (explore), tuned per function per round.
+- **β (exploration):** roughly **0.5–3.0** in practice (README highlights ~1.5–3.0 for UCB-focused phases), tuned per function and week.
 - **Kernel type:** RBF for smooth functions (F1, F3, F5), Matern for rougher functions (F2, F4, F6, F7).
 - **Candidate count:** 10,000–20,000 depending on dimensionality.
 - **Bias fraction:** 0.5–0.8 (fraction of candidates sampled near incumbent).
 
 ### Time frame
 
-- **Duration:** 10 weeks (one submission per week per function).
-- **Collection period:** [Insert start date] to [Insert end date].
+- **Duration:** **13** weekly submission rounds (one new query per function per week), after initial seed data.
+- **Collection period:** set by the Imperial College Business School BBO capstone offering (fill in term dates if publishing externally).
 
 ---
 
@@ -145,20 +149,25 @@ Three complementary methods were used depending on function characteristics:
 
 ### Availability
 
-The dataset is available in the public GitHub repository:
+Source artefacts live in this repository under **`notebooks/`**:
 
 ```
-/data
-  ├── queries_all.csv              # All queries across functions and rounds
-  ├── queries_by_function/
-  │   ├── F1_queries.csv
-  │   ├── F2_queries.csv
-  │   └── ...
-  ├── initial_data/                # Seed observations provided at start
-  └── README.md
+notebooks/
+  ├── initial_data/                 # Per-function seed inputs/outputs (.npy)
+  │   └── function_1/ … function_8/
+  ├── m12-round-01-gp-ucb/
+  │   └── m12-round-01-gp-ucb.ipynb
+  ├── m13-round-02-beta-per-function/
+  │   ├── m13-round-02-beta-per-function.ipynb
+  │   ├── inputs-m12.txt
+  │   └── outputs-m12.txt
+  ├── …                             # Other round folders with .ipynb + inputs_*.txt / outputs_*.txt
+  └── module.5/                     # Separate coursework notebook (wine example)
 ```
 
-**Repository:** [Insert GitHub URL]
+Python dependencies for the notebooks are listed in **`requirements.txt`** at the **repository root**. Run notebooks with the **round folder** as the working directory so paths like `../initial_data` and local `inputs_*.txt` resolve correctly (see root **README.md**).
+
+**Repository URL:** add your public Git remote when publishing.
 
 ### Terms of use
 
@@ -179,7 +188,7 @@ The dataset is available in the public GitHub repository:
 ### What worked well
 
 - **Per-function β tuning:** adjusting exploration/exploitation per function improved results over a fixed global β.
-- **Multi-strategy comparison:** running GP-UCB, LR corners, and GP Gradient Ascent in parallel revealed function-specific patterns.
+- **Multi-strategy comparison:** GP-UCB, gradient-based acquisition steps, GradientBoosting, cluster / variance-guided ideas, and manual probes each helped on different functions.
 - **Manual hypothesis testing:** corner probe for F5 discovered the true optimum when GP-UCB was searching the wrong region.
 
 ### What could be improved
@@ -191,6 +200,6 @@ The dataset is available in the public GitHub repository:
 ### Key insights
 
 - **Different functions need different strategies:** interior optima (F3, F4, F7) responded to GP Gradient Ascent; boundary optima (F5) needed corner probing.
-- **Getting stuck is informative:** F2 remaining at initial best for 9 weeks suggests either a very flat landscape or optimum in unexplored region.
-- **Limited budget forces trade-offs:** with only 10 queries per function, the exploration-exploitation balance is critical.
+- **Getting stuck is informative:** long plateaus (e.g. F2 under GP-UCB) motivated surrogate changes such as GradientBoosting.
+- **Limited budget forces trade-offs:** with only **13** post-seed queries per function, exploration vs exploitation timing matters (README: late aggressive exploration can regress).
 
