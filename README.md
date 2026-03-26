@@ -1,17 +1,8 @@
-# BBO Capstone Project
-
-## 1. Project overview
-
-This repository contains my work for the **Black-Box Optimisation (BBO) capstone project**. The goal is to optimise a set of eight unknown functions where I can only observe inputs and noisy outputs, with a strict limit on how many times each function can be queried. Learning how to tune parameters efficiently when the function itself is hidden. The goal is to build practical skills for hyperparameter tuning and real-world ML challenges.
-
-In real-world ML, this is similar to tuning an expensive experiment or system. I can’t see the underlying function, I can only try settings and observe performance (e.g. chemical yield, clinical side-effects, system reliability). Here, the aim is to **make the most of very limited data**, not to build a perfect global optimiser.
-
-This maps directly onto things like **hyperparameter tuning, experiment design, and business A/B testing**, where each evaluation costs time or money and you must balance exploration with exploitation.
-
 # Bayesian Black-Box Optimisation Capstone Project
 
+This repository contains my work for the **Black-Box Optimisation (BBO) capstone project**.
 
-## NON-TECHNICAL EXPLANATION OF YOUR PROJECT
+## Non-technical explanation
 
 This project tackled the challenge of finding optimal settings for eight unknown systems — imagine trying to find the perfect recipe without knowing what ingredients do, only tasting the final result. Each week, I could test one combination of settings per system and observe the outcome.
 
@@ -19,8 +10,17 @@ My approach evolved from broad experimentation early on to targeted refinement l
 
 Over 13 weeks, all eight systems improved from their starting points. The most successful strategy combined data-driven pattern recognition with disciplined focus on uncertain variables.
 
+-------
 
-## DATA
+The goal is to optimise a set of eight unknown functions where I can only observe inputs and noisy outputs, with a strict limit on how many times each function can be queried. Learning how to tune parameters efficiently when the function itself is hidden. The goal is to build practical skills for hyperparameter tuning and real-world ML challenges.
+
+In real-world ML, this is similar to tuning an expensive experiment or system. I can’t see the underlying function, I can only try settings and observe performance (e.g. chemical yield, clinical side-effects, system reliability). Here, the aim is to **make the most of very limited data**, not to build a perfect global optimiser.
+
+This maps directly onto things like **hyperparameter tuning, experiment design, and business A/B testing**, where each evaluation costs time or money and you must balance exploration with exploitation.
+
+------------
+
+## Data
 
 The project used eight black-box functions (F1-F8) with varying dimensionality (2D to 8D), provided through the Imperial College Business School BBO Capstone Project portal. Each function accepts input vectors with values between 0 and 1, returning a scalar output to maximise.
 
@@ -31,8 +31,9 @@ Data accumulated over 13 weeks:
 
 All data was provided through the course platform with no external sources required.
 
+------------
 
-## MODEL
+## Model
 
 I employed multiple surrogate models, selected per-function based on observed behaviour:
 
@@ -46,8 +47,9 @@ I employed multiple surrogate models, selected per-function based on observed be
 
 Model selection rationale: No single surrogate works universally. GP-UCB provides theoretical guarantees but assumes smoothness; GradientBoosting handles non-linearity but lacks uncertainty quantification; cluster centres are robust but conservative. Combining approaches based on function characteristics and competitive position yielded the best results.
 
+------------
 
-## HYPERPARAMETER OPTIMISATION
+## Hyerparameter Optimisation
 
 **GP-UCB β Parameter**:
 - Range tested: 1.5 to 3.0
@@ -71,8 +73,9 @@ Model selection rationale: No single surrogate works universally. GP-UCB provide
 - Corner detection threshold: 0.05 (dimensions within this distance of 0 or 1 considered at boundary)
 - Selection: top_k=5 balanced signal (enough points for reliable mean) against noise (excluding mediocre results).
 
+------------
 
-## RESULTS
+## Results
 
 **Final Performance Summary**:
 
@@ -106,6 +109,8 @@ Model selection rationale: No single surrogate works universally. GP-UCB provide
 - Simple methods (cluster centres) often outperform sophisticated ones with limited data
 - Position-dependent strategy (exploit when improving, explore when stagnant) optimises outcomes
 - Systematic model comparison beats intuition-driven selection
+
+------------
 
 ## License
 
