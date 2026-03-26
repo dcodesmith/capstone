@@ -31,6 +31,18 @@ Data accumulated over 13 weeks:
 
 All data was provided through the course platform with no external sources required.
 
+### Running the notebooks
+
+1. **Python environment** (from the repository root):
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Working directory:** open a notebook from its round folder under `notebooks/` (e.g. `notebooks/m14-round-04-gp-nn-hybrid/`) and run with that folder as the kernel’s **current working directory**. The notebooks use `Path("..") / "initial_data"` for seed `.npy` files and load `inputs_*.txt` / `outputs_*.txt` from the same folder.
+
+3. **Editor:** in VS Code, “Run in dedicated Jupyter kernel” / open the `.ipynb` from the file tree so cwd matches the notebook directory; if cells fail to find `initial_data`, check that the kernel was not started with cwd set only to `notebooks/`.
+
 ------------
 
 ## Model
@@ -79,16 +91,18 @@ Model selection rationale: No single surrogate works universally. GP-UCB provide
 
 **Final Performance Summary**:
 
-| Function | Dimensions | Initial Value | Final Best | Improvement |
-|----------|------------|---------------|------------|-------------|
-| F1 | 2D | 9.14e-88 | 2.68e-09 | +79 orders of magnitude |
-| F2 | 2D | 0.337 | 0.697 | +107% |
-| F3 | 3D | -0.150 | -0.0046 | +97% |
-| F4 | 4D | -0.256 | 0.562 | +320% |
-| F5 | 4D | 179.7 | 8662.5 | +4,720% |
-| F6 | 5D | -1.288 | -0.183 | +86% |
-| F7 | 6D | 0.017 | 2.071 | +12,082% |
-| F8 | 8D | 9.943 | 9.968 | +0.25% |
+| Function | Dimensions | Initial Value | Final Best | Improvement | Winning strategy (best week) |
+|----------|------------|---------------|------------|-------------|-----------------------------|
+| F1 | 2D | 9.14e-88 | 2.68e-09 | +79 orders of magnitude | Manual center probe (W6) |
+| F2 | 2D | 0.337 | 0.697 | +107% | GradientBoosting (continued) (W12) |
+| F3 | 3D | -0.150 | -0.0046 | +97% | GP Gradient Ascent (W10) |
+| F4 | 4D | -0.256 | 0.562 | +320% | Cluster centre (W12) |
+| F5 | 4D | 179.7 | 8662.5 | +4,720% | Manual probe [1,1,1,1] (W9) |
+| F6 | 5D | -1.288 | -0.2289 | +82% | Variance-guided (lock d2/d4) (W12) |
+| F7 | 6D | 0.017 | 2.066 | +12,053% | GP Gradient Ascent (W10) |
+| F8 | 8D | 9.943 | 9.968 | +0.25% | Variance-guided (lock d1/d4/d5) (W13) |
+
+*Winning strategy* = method label for the week that produced the **final best** value above (aligned with the strategy history in `bbo-strategy` / round notebooks). F8’s best in the table matches **W13**; other functions match the all-time-best week recorded there.
 
 **Key Findings**:
 
