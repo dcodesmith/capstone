@@ -106,3 +106,9 @@ Model selection rationale: No single surrogate works universally. GP-UCB provide
 - Simple methods (cluster centres) often outperform sophisticated ones with limited data
 - Position-dependent strategy (exploit when improving, explore when stagnant) optimises outcomes
 - Systematic model comparison beats intuition-driven selection
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE).
+
+**Educational use:** This work was produced for the **Black-Box Optimisation capstone** at **Imperial College Business School**. See [NOTICE](NOTICE) for attribution and how that relates to course-provided materials (brief, portal, benchmarks), which may carry **separate** institutional terms.
