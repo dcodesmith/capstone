@@ -1,0 +1,14 @@
+# Python dependencies for Jupyter notebooks in notebooks/
+# From the repository root:
+#   pip install -r requirements.txt
+#
+# TensorFlow is only required for GP+NN hybrid and related notebooks (m14–m21, m18–m20 tuning, etc.).
+# GP-only notebooks (e.g. m12, m13) run with numpy + scikit-learn alone if you prefer a lighter env.
+
+numpy>=1.24,<3
+scikit-learn>=1.3,<2
+tensorflow>=2.15,<3
+
+# Run .ipynb locally
+jupyter>=1.0
+ipykernel>=6.0

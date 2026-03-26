@@ -74,3 +74,13 @@ Exploration and exploitation are controlled mainly through:
 I have considered alternatives like **Expected Improvement (EI)** and **kernel SVMs or regressions** to classify high vs low regions, but so far the main engine remains a **GP surrogate + UCB**, with strategy adjustments driven by the observed data from each round.
 
 Tech Stack: Python, Jupyter Notebooks, NumPy, Pandas, Scipy, Scikit-learn, Matplotlib.
+
+## 5. Python environment
+
+Create a virtual environment, then from the **repository root**:
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs NumPy, scikit-learn, TensorFlow (for hybrid / tuning notebooks), and Jupyter. Open notebooks under `notebooks/`; use each round’s folder as the working directory so `../initial_data` and local `inputs_*.txt` / `outputs_*.txt` resolve correctly.
